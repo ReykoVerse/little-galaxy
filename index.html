@@ -1,0 +1,1316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#08040f">
+<title>A Little Galaxy for You</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&family=VT323&family=Press+Start+2P&family=Vazirmatn:wght@400;700&display=swap">
+
+<style>
+:root {
+  --pink: #ff36d7;
+  --violet: #a855ff;
+  --purple: #682cff;
+  --ink: #08040f;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ink);
+  color: white;
+  font-family: 'Vazirmatn', system-ui, -apple-system, Segoe UI, sans-serif;
+}
+
+#scene {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.vignette {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(ellipse at center, transparent 35%, rgba(5,2,12,.5) 100%);
+}
+
+.hud {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(28px, env(safe-area-inset-top)) 20px max(30px, env(safe-area-inset-bottom));
+  text-align: center;
+  pointer-events: none;
+}
+
+.caption {
+  max-width: 30rem;
+  color: #f3e6ff;
+  font-weight: 700;
+  line-height: 1.15;
+  font-size: clamp(1.4rem, 6vw, 2.6rem);
+  letter-spacing: -.02em;
+  text-shadow: 0 0 18px #862cff99, 0 0 42px #ff36d766;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 1s ease, transform 1s ease;
+}
+.caption.show { opacity: 1; transform: none; }
+
+.hint {
+  color: #f0d8ff;
+  font-size: .95rem;
+  letter-spacing: .06em;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid #e5b7ff55;
+  background: #1a0b2e88;
+  backdrop-filter: blur(8px);
+  text-shadow: 0 0 12px #c27aff;
+  opacity: 0;
+  transition: opacity .8s ease;
+  animation: pulse 1.8s ease-in-out infinite;
+}
+.hint.show { opacity: 1; }
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 10px #9b36ff44; }
+  50% { box-shadow: 0 0 26px #ff36d788; }
+}
+
+button {
+  pointer-events: auto;
+  border: 1px solid #e5b7ff88;
+  border-radius: 999px;
+  padding: 13px 22px;
+  color: white;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+  background: linear-gradient(100deg, #6d28d9dd, #d91ba9dd);
+  box-shadow: 0 0 18px #9b36ff66, inset 0 0 16px #ffffff18;
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition: transform .2s;
+}
+button:active { transform: scale(.97); }
+
+#replay {
+  position: fixed;
+  z-index: 3;
+  top: max(14px, env(safe-area-inset-top));
+  right: 14px;
+  padding: 8px 14px;
+  font-size: .8rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .6s;
+}
+#replay.show { opacity: .85; pointer-events: auto; }
+
+/* ---------- The book page ---------- */
+.overlay {
+  position: fixed;
+  z-index: 4;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: #07020ecc;
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .6s;
+}
+.overlay.show { opacity: 1; pointer-events: auto; }
+
+.page {
+  position: relative;
+  width: min(100%, 430px);
+  min-height: min(68vh, 420px);
+  max-height: 86vh;
+  overflow-y: auto;
+  padding: 44px 28px 24px 54px;
+  border: 5px solid #6b2d1b;
+  border-radius: 10px;
+  color: #3a2312;
+  text-align: left;
+  background: radial-gradient(ellipse at 40% 30%, #fbf1d6 0%, #f1e0b6 68%, #e0c892 100%);
+  box-shadow:
+    inset 0 0 0 3px #a35232,
+    inset 0 0 44px #b8863f66,
+    0 0 0 2px #2a1208,
+    0 0 70px #000c,
+    0 0 100px #ffb34733;
+  font-family: 'Minecraft', 'Pixelify Sans', 'VT323', 'Vazirmatn', monospace;
+  -webkit-font-smoothing: none;
+  transform: translateY(70px) scale(.92);
+  opacity: 0;
+  transition: transform .9s cubic-bezier(.2,.9,.25,1), opacity .7s;
+}
+.overlay.show .page { transform: none; opacity: 1; }
+
+/* red stitched binding on the left */
+.page::before {
+  content: '';
+  position: absolute;
+  left: 12px; top: 16px; bottom: 16px;
+  width: 18px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='20'><path d='M12 2 Q4 10 12 18' fill='none' stroke='%23c32a1c' stroke-width='3.2' stroke-linecap='round'/></svg>") repeat-y;
+}
+
+.pageno {
+  position: absolute;
+  top: 12px; right: 20px;
+  font-size: 1rem;
+  color: #4a2a14;
+}
+
+.page h2 {
+  margin: 0 0 14px;
+  font-weight: 400;
+  font-size: 1.55rem;
+  line-height: 1.25;
+  color: #5a2410;
+  text-shadow: 2px 2px #d9c08a;
+}
+
+.page p {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #2b1a0c;
+  white-space: pre-line;
+}
+.page p.sign {
+  text-align: center;
+  font-size: 1.35rem;
+  line-height: 1.9;
+  padding-top: 2.2rem;
+}
+
+.page button {
+  margin: 0;
+  padding: 11px 16px;
+  border: 3px solid #000;
+  border-radius: 0;
+  background: #8b8b8b;
+  color: #fff;
+  font-family: 'Minecraft', 'Pixelify Sans', 'Press Start 2P', monospace;
+  font-size: .95rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-shadow: 2px 2px #3f3f3f;
+  box-shadow: inset 3px 3px #c6c6c6, inset -3px -3px #555;
+  backdrop-filter: none;
+}
+.page button:hover { background: #7a85c9; }
+.nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+  clear: both;
+}
+@media (max-width: 420px) {
+  .page { padding: 40px 18px 20px 46px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="scene"></canvas>
+<div class="vignette"></div>
+
+<div class="hud">
+  <div class="caption" id="caption"></div>
+  <div class="hint" id="hint"></div>
+</div>
+
+<button id="replay">Replay ↺</button>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="letterTitle">
+  <article class="page">
+    <div class="pageno" id="pageNo"></div>
+    <h2 id="letterTitle" dir="auto"></h2>
+    <p id="letterBody" dir="auto"></p>
+    <div class="nav">
+      <button id="prevButton" type="button"></button>
+      <button id="nextButton" type="button"></button>
+    </div>
+  </article>
+</div>
+
+<script type="module">
+import * as THREE from
+  'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+/* =====================================================================
+   ✏️  EDIT YOUR TEXT HERE
+   ===================================================================== */
+const LETTER = {
+  cover: 'for rayane',            // written on the book's cover
+  title: 'Happy Birthday! 💜',    // shown on the first page only
+  pages: [
+`If someone had told me that a simple conversation between two people from different parts of the world could become something worth remembering, I probably wouldn't have thought much of it.
+
+But here we are.`,
+
+`We started with different languages, different places, and probably different ways of seeing the world. And somehow, somewhere between all those words, conversations, and little moments, you became someone I'm genuinely glad I got to know.
+
+There's something beautiful about how people can enter each other's lives without planning to. Just one conversation, then another, until one day you realize you're glad it happened.`,
+
+`And I'm glad ours did.
+
+You know, I think there's something special about the way you see the world. You might seem serious at first, but there's so much more to you than meets the eye, and I think that's beautiful.
+
+And honestly, I don't think I'll ever stop asking you my weird, random questions. Hahaha. So, good luck with that!`,
+
+`For your birthday, I hope you achieve those dreams and goals that seem impossible right now. And please, never lose hope in yourself, because I'm sure that one day, you'll truly achieve everything you want. Just wish for it... :)
+
+And always remember, in that beautiful grey interior you love, a bouquet of lilies can make everything even more beautiful...Mr. Coffee Lover :>>`,
+
+`Happy birthday rayane
+
+— Reyhaneh`
+  ],
+  prevLabel: '< Back',
+  nextLabel: 'Next >',
+  closeLabel: 'Back to the stars ✦'
+};
+
+const TEXTS = {
+  captions: [],   // no captions during the transformation
+
+  hintFirst: 'tap the book to open it ✦',
+  hintAgain: 'tap the book to read it again ✦'
+};
+
+/* ---------- Timeline (seconds) ---------- */
+const TL = {
+  fadeIn: 1.6,
+  morph: 2.8, spread: 2.0, dur: 2.6,   // particles -> character
+  solid0: 6.6, solid1: 7.8,            // solid blocks fade in
+  walk0: 8.0, walk1: 12.2,             // walk toward the screen
+  letter0: 12.4, letter1: 14.4         // book flies to the front
+};
+
+/* ---------- helpers ---------- */
+const clamp01 = x => Math.min(1, Math.max(0, x));
+const smooth = x => { x = clamp01(x); return x * x * (3 - 2 * x); };
+const easeIO = x => { x = clamp01(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+
+// make sure the pixel fonts are ready before drawing the cover
+try {
+  await Promise.race([
+    Promise.all([
+      document.fonts.load('24px "Pixelify Sans"', LETTER.cover + LETTER.title + LETTER.pages.join(' ')),
+      document.fonts.load('16px "Press Start 2P"', LETTER.cover),
+      document.fonts.load('24px "VT323"', 'Page 1 of 1'),
+      document.fonts.load('16px "Vazirmatn"', 'a')
+    ]),
+    new Promise(r => setTimeout(r, 2500))
+  ]);
+} catch (e) { /* fall back to system fonts */ }
+
+// ------------------------------
+// 1. SCENE, CAMERA, RENDERER
+// ------------------------------
+const canvas = document.querySelector('#scene');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.25;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#08040f');
+
+const FOV = 38;
+const TANH = Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 150);
+scene.add(camera);
+
+let D = 14;          // camera distance
+let zEnd = 4;        // how far the character walks
+const lookY = 2.5;
+
+function layout() {
+  const w = window.innerWidth, h = window.innerHeight;
+  const asp = w / h;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(w, h);
+  camera.aspect = asp;
+  camera.updateProjectionMatrix();
+
+  const k = 2 * TANH;
+  D = Math.max(9.8 / (k * asp), 14);
+  const dEnd = Math.max(4.7 / (k * asp * 0.92), 6.4 / k);
+  zEnd = Math.max(D - dEnd, 1);
+
+  const sf = Math.max(1, D / 14);
+  charSizeBase = 0.062 * sf;
+  orbMat.size = 0.11 * sf;
+  restMat.size = 0.036 * sf;
+  starMat.size = 0.03 * sf;
+}
+
+// Fill light that travels with the camera (keeps the book bright)
+const fill = new THREE.PointLight(0xffe2ff, 30, 20);
+fill.position.set(0.4, 0.9, -3);
+camera.add(fill);
+
+// ------------------------------
+// 2. LIGHTS (follow the character's z)
+// ------------------------------
+const lightRig = new THREE.Group();
+scene.add(lightRig);
+scene.add(new THREE.AmbientLight(0xb99bff, 1.25));
+
+const keyLight = new THREE.PointLight(0xc27aff, 100, 30);
+keyLight.position.set(-3, 5, 5);
+lightRig.add(keyLight);
+
+const pinkLight = new THREE.PointLight(0xff2ecb, 65, 18);
+pinkLight.position.set(2, 2, 2);
+lightRig.add(pinkLight);
+
+const rimLight = new THREE.PointLight(0x4b28ff, 110, 25);
+rimLight.position.set(4, 1, -4);
+lightRig.add(rimLight);
+
+// ------------------------------
+// 3. MATERIALS
+// ------------------------------
+const mat = (color, emissive = null, intensity = 0) =>
+  new THREE.MeshStandardMaterial({
+    color,
+    roughness: 0.78,
+    metalness: 0.05,
+    emissive: emissive || '#000000',
+    emissiveIntensity: intensity
+  });
+
+// ---- Minecraft-style pixel-noise textures (Enderman skin) ----
+function noiseTex(base, spread, dark = 0.2, px = 16) {
+  const c = document.createElement('canvas');
+  c.width = c.height = px;
+  const g = c.getContext('2d');
+  for (let y = 0; y < px; y++) for (let x = 0; x < px; x++) {
+    let v = base + (Math.random() - 0.5) * spread;
+    if (Math.random() < dark) v *= 0.45;            // darker pixel blotches
+    const n = Math.max(0, Math.round(v));
+    g.fillStyle = `rgb(${n},${Math.round(n * 0.98)},${Math.round(n * 1.14)})`;
+    g.fillRect(x, y, 1, 1);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.magFilter = t.minFilter = THREE.NearestFilter;
+  t.generateMipmaps = false;
+  return t;
+}
+const ender = (base, spread = 26, emis = 0.7, dark = 0.2) => {
+  const t = noiseTex(base, spread, dark);
+  return new THREE.MeshStandardMaterial({
+    map: t, emissiveMap: t, emissive: '#9a6cff', emissiveIntensity: emis,
+    roughness: 0.92, metalness: 0
+  });
+};
+
+// head faces: [+x, -x, +y, -y, +z, -z]  (top & left side catch more light)
+const headMats = [
+  ender(40), ender(60), ender(74), ender(26), ender(52), ender(40)
+];
+
+// eyes: magenta inside, pale lavender on the outer edge (like the GIF)
+const eyeMag = mat('#d02cff', '#e04bff', 3.2);
+const eyeLav = mat('#ecb8ff', '#f0c4ff', 3.0);
+
+// rose: red pixels, dark-green stem
+const petalMat = mat('#c8121a', '#d4141c', 1.0);
+const petalHi  = mat('#ee3a40', '#f04048', 1.1);
+const petalDark = mat('#85080f', '#8a0a12', 0.8);
+const stemMat  = mat('#1c5a2a', '#1f7a38', 0.6);
+const stemMat2 = mat('#134520', '#176a2c', 0.5);
+const leafMat  = mat('#1b6b34', '#22893f', 0.6);
+const leafDark = mat('#0f4020', '#14602c', 0.5);
+
+function cube(parent, size, material, pos, rot = [0, 0, 0]) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
+  mesh.position.set(...pos);
+  mesh.rotation.set(...rot);
+  parent.add(mesh);
+  return mesh;
+}
+// dark parts are nearly black, so their particle colour is set by hand
+const withP = (mesh, col) => { mesh.userData.pcol = col; return mesh; };
+const P_HEAD = '#5b3ca8', P_BODY = '#4b2f96';
+
+// ------------------------------
+// 4. THE BABY ENDERMAN
+// ------------------------------
+const BASE = new THREE.Vector3(0.35, 0, 0);
+const character = new THREE.Group();
+scene.add(character);
+character.position.copy(BASE);
+
+// Legs: thin, long, pivot at the hip (swing while walking)
+function radialTex(stops, size = 128) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d');
+  const gr = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  stops.forEach(([t, col]) => gr.addColorStop(t, col));
+  g.fillStyle = gr; g.fillRect(0, 0, size, size);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+function makeLeg(x) {
+  const g = new THREE.Group();
+  g.position.set(x, 1.45, 0);
+  character.add(g);
+  withP(cube(g, [0.3, 0.78, 0.3], ender(36, 22, 0.6), [0, -0.37, 0]), P_BODY);      // thigh
+  const knee = new THREE.Group();
+  knee.position.set(0, -0.72, 0);
+  g.add(knee);
+  withP(cube(knee, [0.28, 0.74, 0.28], ender(34, 22, 0.6), [0, -0.35, 0]), P_BODY); // shin
+  g.userData.knee = knee;
+  return g;
+}
+const legL = makeLeg(-0.2);
+const legR = makeLeg(0.2);
+
+// Torso (small) + neck
+withP(cube(character, [0.95, 1.3, 0.58], ender(44, 24, 0.7), [0, 2.1, 0]), P_BODY);
+withP(cube(character, [0.4, 0.2, 0.36], ender(30, 16, 0.5), [0, 2.82, 0]), P_BODY);
+
+// Head: big cube, slightly tilted/turned
+const head = new THREE.Group();
+head.position.set(0, 3.85, 0);
+head.rotation.set(0.06, -0.25, 0.09);
+character.add(head);
+withP(cube(head, [2.1, 2.0, 2.0], headMats, [0, 0, 0]), P_HEAD);
+
+// Eyes: two wide glowing bars low on the face
+function makeEye(s) {                 // s = -1 left, +1 right
+  const z = 1.02, y = -0.28;
+  cube(head, [0.44, 0.36, 0.04], eyeMag, [s * 0.44, y, z]);   // inner magenta
+  cube(head, [0.28, 0.36, 0.04], eyeLav, [s * 0.80, y, z]);   // outer lavender
+  cube(head, [0.12, 0.12, 0.05], eyeLav, [s * 0.34, y + 0.09, z + 0.01]); // highlight
+}
+makeEye(-1);
+makeEye(1);
+
+// soft purple glow cast by the eyes
+const eyeGlow = new THREE.PointLight(0xc23cff, 16, 6);
+eyeGlow.position.set(0, 3.5, 1.8);
+character.add(eyeGlow);
+
+// neon halos (additive glow sprites) in front of the eyes
+const haloTex = radialTex([[0, 'rgba(255,200,255,0.95)'], [0.3, 'rgba(208,60,255,0.55)'],
+                           [0.65, 'rgba(140,20,255,0.14)'], [1, 'rgba(110,0,255,0)']]);
+const eyeHalos = [];
+[[-0.58, 1.9, 1.15], [0.58, 1.9, 1.15], [0, 4.4, 2.4]].forEach(([x, w, h]) => {
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: haloTex, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false
+  }));
+  sp.scale.set(w, h, 1);
+  sp.position.set(x, -0.28, 1.15);
+  head.add(sp);
+  eyeHalos.push(sp);
+});
+
+// Arms: shoulder -> elbow -> hand
+function makeArm(side, rx1, rx2, rz) {
+  const sh = new THREE.Group();
+  sh.position.set(side * 0.64, 2.68, 0);
+  sh.rotation.set(rx1, 0, rz);
+  character.add(sh);
+  withP(cube(sh, [0.27, 0.8, 0.27], ender(38, 22, 0.6), [0, -0.38, 0]), P_BODY);
+  const el = new THREE.Group();
+  el.position.set(0, -0.76, 0);
+  el.rotation.x = rx2;
+  sh.add(el);
+  withP(cube(el, [0.25, 0.78, 0.25], ender(36, 22, 0.6), [0, -0.37, 0]), P_BODY);
+  withP(cube(el, [0.3, 0.3, 0.3], ender(32, 18, 0.6), [0, -0.8, 0]), P_BODY);
+  const hand = new THREE.Object3D();
+  hand.position.set(0, -0.8, 0);
+  el.add(hand);
+  return hand;
+}
+const handL = makeArm(-1, -0.35, -1.5, -0.12);   // holds the rose
+const handR = makeArm(1, -0.3, -1.2, 0.35);      // holds the book
+
+character.updateMatrixWorld(true);
+const handLPos = character.worldToLocal(handL.getWorldPosition(new THREE.Vector3()));
+const handRPos = character.worldToLocal(handR.getWorldPosition(new THREE.Vector3()));
+
+// ------------------------------
+// 5. PIXEL ROSE IN THE LEFT HAND
+// ------------------------------
+const flower = new THREE.Group();
+character.add(flower);
+flower.position.set(handLPos.x, handLPos.y + 0.62, handLPos.z + 0.12);
+flower.rotation.z = -0.12;
+
+const U = 0.19;   // one "pixel"
+const PETALS = [
+  '.XXX.',
+  'XLXXX',
+  'XXDXX',
+  'XDXXD',
+  '.XXX.'
+];
+const petalKey = { X: petalMat, L: petalHi, D: petalDark };
+PETALS.forEach((row, r) => {
+  [...row].forEach((ch, c) => {
+    if (ch === '.') return;
+    cube(flower, [U * 1.02, U * 1.02, 0.2], petalKey[ch], [(c - 2) * U, (2 - r) * U, ch === 'D' ? 0.03 : 0]);
+  });
+});
+
+[[0, -0.55], [0, -0.77], [0, -0.99], [-0.05, -1.21], [-0.05, -1.43]]
+  .forEach(([x, y], i) => cube(flower, [0.12, 0.22, 0.12], i % 2 ? stemMat2 : stemMat, [x, y, 0]));
+cube(flower, [0.22, 0.14, 0.12], leafMat, [0.2, -0.95, 0.02]);
+cube(flower, [0.22, 0.14, 0.12], leafDark, [0.4, -0.82, 0.02]);
+cube(flower, [0.22, 0.14, 0.12], leafMat, [-0.26, -1.2, 0.02]);
+cube(flower, [0.22, 0.14, 0.12], leafDark, [-0.46, -1.07, 0.02]);
+
+// ------------------------------
+// 6. THE BOOK (replaces the envelope)
+// ------------------------------
+const LW = 0.9, LH = 1.1, LD = 0.3;
+// the hand sits behind the book's lower edge, so nothing pokes through the cover
+const LETTER_POS = handRPos.clone().add(new THREE.Vector3(-0.05, 0.35, 0.37));
+const LETTER_ROT = new THREE.Euler(-0.08, -0.12, -0.06);
+
+// ---- little pixel-art helpers ----
+const mkCanvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+const pxTex = c => {
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.magFilter = t.minFilter = THREE.NearestFilter;
+  t.generateMipmaps = false;
+  return t;
+};
+const rnd = a => a[Math.floor(Math.random() * a.length)];
+const LEATHER = ['#8f5d2c', '#9a6733', '#86562a', '#a2703a', '#7f5126', '#92602e'];
+const LEATHER_D = ['#5c3818', '#6b4320', '#573415', '#4a2c12'];
+const GOLD = ['#e8b81a', '#d9a62a', '#f0c63a'];
+
+function leatherCanvas(NX, NY, B) {
+  const c = mkCanvas(NX * B, NY * B), g = c.getContext('2d');
+  for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) {
+    g.fillStyle = rnd(LEATHER); g.fillRect(x * B, y * B, B, B);
+  }
+  return { c, g };
+}
+
+// front cover: leather + gold frame + Eye-of-Ender emblem + name plate
+function makeCoverTexture(label) {
+  const B = 4, NX = 40, NY = 52;
+  const { c, g } = leatherCanvas(NX, NY, B);
+  const P = (x, y, col, w = 1, h = 1) => { g.fillStyle = col; g.fillRect(x * B, y * B, w * B, h * B); };
+
+  for (let x = 0; x < NX; x++) for (const y of [0, 1, NY - 2, NY - 1]) P(x, y, rnd(LEATHER_D));
+  for (let y = 0; y < NY; y++) for (const x of [0, 1, NX - 2, NX - 1]) P(x, y, rnd(LEATHER_D));
+  for (let x = 3; x < NX - 3; x++) for (const y of [3, NY - 4]) P(x, y, rnd(GOLD));
+  for (let y = 3; y < NY - 3; y++) for (const x of [3, NX - 4]) P(x, y, rnd(GOLD));
+
+  // cute pixel orange
+  const cx = 20, cy = 16, R = 6;
+  for (let y = -R; y <= R; y++) for (let x = -R; x <= R; x++) {
+    const d = Math.hypot(x, y * 1.05);
+    if (d > R + 0.2) continue;
+    let col = '#ff9a1f';
+    if (d > R - 1.1) col = '#c4560a';                          // outline
+    else if (x + y > 5) col = '#e8740f';                        // shade
+    else if (x + y < -4 && d < R - 1.4) col = '#ffc65a';        // highlight
+    P(cx + x, cy + y, col);
+  }
+  [[2, -3], [-3, 3], [1, 4]].forEach(([dx, dy]) => P(cx + dx, cy + dy, '#f2870f'));   // peel dots
+  const K = '#3a1c08';
+  P(cx - 2, cy, K, 1, 2); P(cx + 2, cy, K, 1, 2);                                    // eyes
+  P(cx - 1, cy + 2, K); P(cx, cy + 3, K); P(cx + 1, cy + 2, K);                      // smile
+  P(cx - 4, cy + 1, '#ff7a8a', 2, 1); P(cx + 3, cy + 1, '#ff7a8a', 2, 1);            // blush
+  P(cx, cy - R, '#6b3f14'); P(cx, cy - R - 1, '#6b3f14');                            // stem
+  P(cx + 1, cy - R - 1, '#237a28'); P(cx + 2, cy - R - 1, '#3fae3a'); P(cx + 3, cy - R - 1, '#3fae3a');
+  P(cx + 2, cy - R - 2, '#3fae3a'); P(cx + 3, cy - R - 2, '#3fae3a'); P(cx + 4, cy - R - 2, '#237a28');
+  const spark = (x, y) => {
+    P(x, y, '#f0c63a');
+    [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([ox, oy]) => P(x + ox, y + oy, '#d9a62a'));
+  };
+  spark(cx - 10, cy - 4); spark(cx + 10, cy + 3);
+
+  // name plate
+  const px = 6 * B, py = 27 * B, pw = 28 * B, ph = 16 * B;
+  g.fillStyle = '#3a2210'; g.fillRect(px - B, py - B, pw + 2 * B, ph + 2 * B);
+  g.fillStyle = '#f1dfb6'; g.fillRect(px, py, pw, ph);
+  g.fillStyle = '#d9c08a'; g.fillRect(px, py + ph - B, pw, B);
+
+  const lines = label.includes(' ') ? label.split(' ') : [label];
+  const setFont = s => { g.font = `${s}px "Minecraft", "Pixelify Sans", "Press Start 2P", "VT323", monospace`; };
+  let size = 24;
+  setFont(size);
+  while (size > 8 && (Math.max(...lines.map(l => g.measureText(l).width)) > pw - 10 || lines.length * (size + 2) > ph - 4)) {
+    size -= 8; setFont(size);
+  }
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  const lh = size + 2;
+  const y0 = py + ph / 2 - ((lines.length - 1) * lh) / 2 + 1;
+  lines.forEach((l, i) => {
+    g.fillStyle = '#bfa874'; g.fillText(l, px + pw / 2 + 2, y0 + i * lh + 2);   // pixel shadow
+    g.fillStyle = '#3b2412'; g.fillText(l, px + pw / 2, y0 + i * lh);
+  });
+  return pxTex(c);
+}
+
+// first page (seen when the cover opens): scribbles + a tiny heart
+function makePageTexture() {
+  const B = 3, NX = 30, NY = 38;
+  const c = mkCanvas(NX * B, NY * B), g = c.getContext('2d');
+  const CREAM = ['#f1e2bd', '#f3e5c2', '#eedcb2', '#f0e0b8'];
+  for (let y = 0; y < NY; y++) for (let x = 0; x < NX; x++) { g.fillStyle = rnd(CREAM); g.fillRect(x * B, y * B, B, B); }
+  const P = (x, y, col, w = 1, h = 1) => { g.fillStyle = col; g.fillRect(x * B, y * B, w * B, h * B); };
+  for (let row = 4; row < NY - 10; row += 3) {
+    let x = 4;
+    const end = NX - 4 - (Math.random() < 0.3 ? 2 + Math.floor(Math.random() * 6) : 0);
+    while (x < end) {
+      const w = Math.min(end - x, 1 + Math.floor(Math.random() * 4));
+      P(x, row, '#7a5a34', w, 1);
+      x += w + 1;
+    }
+  }
+  ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'].forEach((r, j) =>
+    [...r].forEach((ch, i) => { if (ch === 'X') P(11 + i, NY - 8 + j, i < 2 && j < 2 ? '#e6a6ff' : '#c21bff'); }));
+  return pxTex(c);
+}
+
+// page-stack edges (thin lines between pages)
+function edgeCanvas(vertical) {
+  const n = 16, c = mkCanvas(n, n), g = c.getContext('2d');
+  for (let i = 0; i < n; i++) {
+    g.fillStyle = i % 2 ? '#e2cf9e' : '#f3e6c4';
+    vertical ? g.fillRect(i, 0, 1, n) : g.fillRect(0, i, n, 1);
+  }
+  return c;
+}
+
+const std = (o) => new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0, ...o });
+const leatherMat = std({ map: pxTex(leatherCanvas(16, 16, 2).c), emissive: '#3a2008', emissiveIntensity: 0.45 });
+const coverFront = std({ map: makeCoverTexture(LETTER.cover), emissive: '#ffffff', emissiveIntensity: 0.28 });
+const coverTexRef = coverFront.map;
+coverFront.emissiveMap = coverTexRef;
+const pageTex = makePageTexture();
+const pageFront = std({ map: pageTex, emissiveMap: pageTex, emissive: '#ffffff', emissiveIntensity: 0.3 });
+const edgeV = std({ map: pxTex(edgeCanvas(true)), emissive: '#d8b97a', emissiveIntensity: 0.35 });
+const edgeH = std({ map: pxTex(edgeCanvas(false)), emissive: '#d8b97a', emissiveIntensity: 0.35 });
+const woodInner = mat('#b98a52', '#6a4420', 0.3);
+const goldMat = mat('#e8b81a', '#ffc933', 1.0);
+const pagesMat = mat('#f1e2bd', '#d8b97a', 0.4);
+const ribbonMat = mat('#b3201a', '#c42a22', 0.6);
+
+const letter = new THREE.Group();
+character.add(letter);
+letter.position.copy(LETTER_POS);
+letter.rotation.copy(LETTER_ROT);
+
+const COV_W = LW + 0.04, COV_H = LH + 0.05, COV_T = 0.07;
+
+// back cover, page block, spine (with gold ridges), ribbon bookmark
+withP(cube(letter, [COV_W, COV_H, COV_T], leatherMat, [0, 0, -LD / 2 + COV_T / 2]), '#8a5424');
+withP(cube(letter, [LW - 0.06, LH - 0.07, LD - COV_T * 2],
+  [edgeV, edgeV, edgeH, edgeH, pageFront, pagesMat], [0.02, 0, 0]), '#f2e2bd');
+withP(cube(letter, [0.12, COV_H, LD], leatherMat, [-LW / 2 + 0.02, 0, 0]), '#8a5424');
+[-0.33, 0, 0.33].forEach(yy =>
+  withP(cube(letter, [0.14, 0.05, LD + 0.02], goldMat, [-LW / 2 + 0.02, yy, 0]), '#ffd23a'));
+withP(cube(letter, [0.07, 0.4, 0.02], ribbonMat, [0.15, -LH / 2 - 0.12, 0]), '#d33a30');
+
+// front cover swings open around the spine
+const coverHinge = new THREE.Group();
+coverHinge.position.set(-LW / 2, 0, LD / 2 - COV_T / 2);
+letter.add(coverHinge);
+
+withP(cube(coverHinge, [COV_W, COV_H, COV_T],
+  [leatherMat, leatherMat, leatherMat, leatherMat, coverFront, woodInner],
+  [COV_W / 2, 0, 0]), '#d28a3a');
+
+// gold corner plates
+[[0.09, 1], [COV_W - 0.09, 1], [0.09, -1], [COV_W - 0.09, -1]].forEach(([x, sy]) =>
+  withP(cube(coverHinge, [0.16, 0.16, 0.02], goldMat, [x, sy * (COV_H / 2 - 0.09), COV_T / 2 + 0.01]), '#ffd23a'));
+
+// ------------------------------
+// 7. MATERIAL GROUPS FOR FADING
+// ------------------------------
+const matsOf = o => (Array.isArray(o.material) ? o.material : [o.material]);
+const letterMats = new Set();
+letter.traverse(o => { if (o.isMesh) matsOf(o).forEach(m => letterMats.add(m)); });
+const bodyMats = new Set();
+character.traverse(o => {
+  if (o.isMesh) matsOf(o).forEach(m => { if (!letterMats.has(m)) bodyMats.add(m); });
+});
+
+function setOpacity(set, o) {
+  set.forEach(m => { m.transparent = o < 0.999; m.opacity = o; });
+}
+setOpacity(bodyMats, 0);
+setOpacity(letterMats, 0);
+character.visible = false;
+
+// ------------------------------
+// 8. GALAXY PARTICLES (some become the character)
+// ------------------------------
+const N_TOTAL = 17000;
+const N_CHAR = N_TOTAL;   // every galaxy particle becomes the character
+const N_REST = N_TOTAL - N_CHAR;
+
+const CEN = new THREE.Vector3(0, 2.5, -2.5);
+const TILT = 1.05;
+const cosT = Math.cos(TILT), sinT = Math.sin(TILT);
+
+const colorA = new THREE.Color('#5d1bff');
+const colorB = new THREE.Color('#e52dff');
+const colorC = new THREE.Color('#ff45c8');
+
+const cG = new Float32Array(N_CHAR * 3);     // galaxy-local position
+const cGcol = new Float32Array(N_CHAR * 3);  // galaxy colour
+const rG = new Float32Array(N_REST * 3);
+const rCol = new Float32Array(N_REST * 3);
+
+function galaxyPoint(i, outPos, outCol, o) {
+  const arm = i % 4;
+  const radius = Math.pow(Math.random(), 0.62) * 6.4;
+  const angle = radius * 1.05 + arm * Math.PI / 2 + (Math.random() - 0.5) * 0.65;
+
+  outPos[o]     = Math.cos(angle) * radius + (Math.random() - 0.5) * 0.48;
+  outPos[o + 1] = (Math.random() - 0.5) * 1.1 * (1 - radius / 9) + Math.sin(radius * 1.5) * 0.12;
+  outPos[o + 2] = Math.sin(angle) * radius + (Math.random() - 0.5) * 0.48;
+
+  const c = new THREE.Color().copy(colorA).lerp(colorB, Math.random() * 0.7);
+  if (Math.random() > 0.86) c.lerp(colorC, 0.65);
+  if (radius < 1.2) c.lerp(new THREE.Color('#ffd0ff'), 0.5 * (1 - radius / 1.2));
+  outCol[o] = c.r; outCol[o + 1] = c.g; outCol[o + 2] = c.b;
+}
+
+for (let i = 0; i < N_CHAR; i++) galaxyPoint(i, cG, cGcol, i * 3);
+for (let i = 0; i < N_REST; i++) galaxyPoint(i, rG, rCol, i * 3);
+
+// --- sample target points on the character's surface ---
+character.updateMatrixWorld(true);
+
+const firstMat = o => (Array.isArray(o.material) ? o.material[4] : o.material);
+
+const parts = [];
+character.traverse(o => {
+  if (o.isMesh && o.geometry.type === 'BoxGeometry') {
+    const p = o.geometry.parameters;
+    const area = 2 * (p.width * p.height + p.width * p.depth + p.height * p.depth);
+    const glow = firstMat(o).emissiveIntensity > 0.9 ? 2.4 : 1;
+    parts.push({ o, p, w: area * glow });
+  }
+});
+let totalW = 0;
+parts.forEach(pt => { totalW += pt.w; pt.cum = totalW; });
+
+const VIOLET = new THREE.Color('#a855ff');
+const tmpV = new THREE.Vector3();
+const cT = new Float32Array(N_CHAR * 3);
+const cTcol = new Float32Array(N_CHAR * 3);
+const cRnd = new Float32Array(N_CHAR * 3);
+const cDelay = new Float32Array(N_CHAR);
+
+for (let i = 0; i < N_CHAR; i++) {
+  const r = Math.random() * totalW;
+  let k = 0;
+  while (k < parts.length - 1 && parts[k].cum < r) k++;
+  const { o, p } = parts[k];
+
+  const w = p.width, h = p.height, d = p.depth;
+  const ax = h * d, ay = w * d, az = w * h;
+  const rr = Math.random() * (ax + ay + az);
+  let x, y, z;
+  if (rr < ax) {
+    x = (Math.random() < .5 ? -.5 : .5) * w; y = (Math.random() - .5) * h; z = (Math.random() - .5) * d;
+  } else if (rr < ax + ay) {
+    y = (Math.random() < .5 ? -.5 : .5) * h; x = (Math.random() - .5) * w; z = (Math.random() - .5) * d;
+  } else {
+    z = (Math.random() < .72 ? .5 : -.5) * d; x = (Math.random() - .5) * w; y = (Math.random() - .5) * h;
+  }
+  tmpV.set(x, y, z).applyMatrix4(o.matrixWorld);
+  cT[i * 3] = tmpV.x; cT[i * 3 + 1] = tmpV.y; cT[i * 3 + 2] = tmpV.z;
+
+  let c;
+  if (o.userData.pcol) {
+    c = new THREE.Color(o.userData.pcol).multiplyScalar(1.15);
+  } else {
+    const m = firstMat(o);
+    c = m.color.clone().add(m.emissive.clone().multiplyScalar(Math.min(m.emissiveIntensity, 2) * 0.55));
+    c.lerp(VIOLET, 0.28).multiplyScalar(1.35);
+  }
+  cTcol[i * 3] = c.r; cTcol[i * 3 + 1] = c.g; cTcol[i * 3 + 2] = c.b;
+
+  cRnd[i * 3]     = (Math.random() - 0.5) * 3.2;
+  cRnd[i * 3 + 1] = (Math.random() - 0.5) * 3.2;
+  cRnd[i * 3 + 2] = (Math.random() - 0.5) * 3.2;
+  cDelay[i] = Math.random() * TL.spread;
+}
+
+// Points that morph into the character
+const charPos = new Float32Array(N_CHAR * 3);
+const charCol = new Float32Array(N_CHAR * 3);
+const charGeo = new THREE.BufferGeometry();
+const charPosAttr = new THREE.BufferAttribute(charPos, 3);
+const charColAttr = new THREE.BufferAttribute(charCol, 3);
+charPosAttr.setUsage(THREE.DynamicDrawUsage);
+charColAttr.setUsage(THREE.DynamicDrawUsage);
+charGeo.setAttribute('position', charPosAttr);
+charGeo.setAttribute('color', charColAttr);
+
+const charMat = new THREE.PointsMaterial({
+  size: 0.062, vertexColors: true, transparent: true, opacity: 0,
+  blending: THREE.AdditiveBlending, depthWrite: false
+});
+let charSizeBase = 0.062;
+const charPoints = new THREE.Points(charGeo, charMat);
+charPoints.frustumCulled = false;
+scene.add(charPoints);
+
+// Points that stay as the galaxy
+const restGeo = new THREE.BufferGeometry();
+restGeo.setAttribute('position', new THREE.BufferAttribute(rG, 3));
+restGeo.setAttribute('color', new THREE.BufferAttribute(rCol, 3));
+const restMat = new THREE.PointsMaterial({
+  size: 0.036, vertexColors: true, transparent: true, opacity: 0,
+  blending: THREE.AdditiveBlending, depthWrite: false
+});
+const restPoints = new THREE.Points(restGeo, restMat);
+restPoints.visible = false;   // no leftover galaxy
+
+const galaxyRig = new THREE.Group();   // position + tilt
+galaxyRig.position.copy(CEN);
+galaxyRig.rotation.x = TILT;
+const galaxySpin = new THREE.Group();  // slow spin
+galaxySpin.add(restPoints);
+galaxyRig.add(galaxySpin);
+scene.add(galaxyRig);
+
+// ------------------------------
+// 9. DISTANT STARS
+// ------------------------------
+const starPos = new Float32Array(1400 * 3);
+for (let i = 0; i < 1400; i++) {
+  starPos[i * 3]     = (Math.random() - 0.5) * 70;
+  starPos[i * 3 + 1] = (Math.random() - 0.5) * 44;
+  starPos[i * 3 + 2] = -10 - Math.random() * 30;
+}
+const starGeo = new THREE.BufferGeometry();
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+const starMat = new THREE.PointsMaterial({
+  color: '#cda4ff', size: 0.03, transparent: true, opacity: 0,
+  blending: THREE.AdditiveBlending, depthWrite: false
+});
+scene.add(new THREE.Points(starGeo, starMat));
+
+// ------------------------------
+// 10. SPARKLES AROUND THE FLOWER
+// ------------------------------
+const sparkles = [];
+for (let i = 0; i < 40; i++) {
+  const s = new THREE.Mesh(
+    new THREE.BoxGeometry(0.045, 0.045, 0.045),
+    new THREE.MeshBasicMaterial({ color: i % 2 ? '#ff3bd8' : '#b25cff', transparent: true, opacity: 0 })
+  );
+  s.userData = {
+    a: Math.random() * Math.PI * 2,
+    r: 0.8 + Math.random() * 1.0,
+    speed: 0.3 + Math.random() * 0.8,
+    y: Math.random() * 2.2 - 1.0
+  };
+  s.visible = false;
+  scene.add(s);
+  sparkles.push(s);
+}
+
+// ------------------------------
+// 10b. NEON PURPLE PARTICLES ORBITING THE CHARACTER
+// ------------------------------
+const N_ORB = 650;
+const orbPos = new Float32Array(N_ORB * 3);
+const orbCol = new Float32Array(N_ORB * 3);
+const neonPal = ['#b026ff', '#d04bff', '#8a3bff', '#e66bff', '#ff5af0'].map(c => new THREE.Color(c));
+const orbData = [];
+for (let i = 0; i < N_ORB; i++) {
+  orbData.push({
+    a: Math.random() * Math.PI * 2,
+    r: 1.7 + Math.pow(Math.random(), 0.8) * 1.5,
+    w: 0.35 + Math.random() * 0.8,           // angular speed
+    h0: Math.random() * 5.4,                 // start height
+    vy: 0.12 + Math.random() * 0.4,          // slow rise
+    tilt: (Math.random() - 0.5) * 0.5,       // ring tilt
+    s: Math.random() * 10,
+    c: neonPal[Math.floor(Math.random() * neonPal.length)]
+  });
+}
+const orbGeo = new THREE.BufferGeometry();
+const orbPosAttr = new THREE.BufferAttribute(orbPos, 3);
+const orbColAttr = new THREE.BufferAttribute(orbCol, 3);
+orbPosAttr.setUsage(THREE.DynamicDrawUsage);
+orbColAttr.setUsage(THREE.DynamicDrawUsage);
+orbGeo.setAttribute('position', orbPosAttr);
+orbGeo.setAttribute('color', orbColAttr);
+const orbMat = new THREE.PointsMaterial({
+  size: 0.11, map: radialTex([[0, 'rgba(255,255,255,1)'], [0.25, 'rgba(255,255,255,0.85)'],
+                              [0.55, 'rgba(255,255,255,0.18)'], [1, 'rgba(255,255,255,0)']], 64),
+  vertexColors: true, transparent: true, opacity: 0,
+  blending: THREE.AdditiveBlending, depthWrite: false
+});
+const orbPoints = new THREE.Points(orbGeo, orbMat);
+orbPoints.frustumCulled = false;
+scene.add(orbPoints);
+
+// ------------------------------
+// 11. UI + INTERACTION
+// ------------------------------
+const captionEl = document.querySelector('#caption');
+const hintEl = document.querySelector('#hint');
+const overlay = document.querySelector('#overlay');
+const replayBtn = document.querySelector('#replay');
+const pageEl = document.querySelector('.page');
+const pageNoEl = document.querySelector('#pageNo');
+const titleEl = document.querySelector('#letterTitle');
+const bodyEl = document.querySelector('#letterBody');
+const prevBtn = document.querySelector('#prevButton');
+const nextBtn = document.querySelector('#nextButton');
+prevBtn.textContent = LETTER.prevLabel;
+let pageIdx = 0;
+
+function renderPage() {
+  const n = LETTER.pages.length;
+  const last = pageIdx === n - 1;
+  titleEl.textContent = pageIdx === 0 ? LETTER.title : '';
+  titleEl.style.display = pageIdx === 0 ? '' : 'none';
+  bodyEl.textContent = LETTER.pages[pageIdx];
+  bodyEl.classList.toggle('sign', last);
+  pageNoEl.textContent = `Page ${pageIdx + 1} of ${n}`;
+  prevBtn.style.visibility = pageIdx === 0 ? 'hidden' : 'visible';
+  nextBtn.textContent = last ? LETTER.closeLabel : LETTER.nextLabel;
+  pageEl.scrollTop = 0;
+}
+renderPage();
+
+let pointerX = 0, pointerY = 0, sx = 0, sy = 0;
+window.addEventListener('pointermove', e => {
+  pointerX = e.clientX / window.innerWidth - 0.5;
+  pointerY = e.clientY / window.innerHeight - 0.5;
+});
+
+let t0 = performance.now();
+let detached = false;
+let ready = false;
+let opened = false;       // cover opened at least once
+let cardOpen = false;
+let openProg = 0;
+let cardTimer = null;
+let shownCaption = '';
+const letterStartPos = new THREE.Vector3();
+const letterStartQuat = new THREE.Quaternion();
+
+function openLetter() {
+  const first = !opened;
+  opened = true;
+  cardOpen = true;
+  pageIdx = 0; renderPage();
+  hintEl.classList.remove('show');
+  clearTimeout(cardTimer);
+  cardTimer = setTimeout(() => overlay.classList.add('show'), first ? 1200 : 150);
+}
+
+function closeLetter() {
+  clearTimeout(cardTimer);
+  overlay.classList.remove('show');
+  cardOpen = false;
+  hintEl.textContent = TEXTS.hintAgain;
+  hintEl.classList.add('show');
+}
+
+canvas.addEventListener('click', () => { if (ready && !cardOpen) openLetter(); });
+nextBtn.addEventListener('click', () => {
+  if (pageIdx < LETTER.pages.length - 1) { pageIdx++; renderPage(); } else closeLetter();
+});
+prevBtn.addEventListener('click', () => { if (pageIdx > 0) { pageIdx--; renderPage(); } });
+window.addEventListener('keydown', e => {
+  if (!cardOpen) return;
+  if (e.key === 'Escape') closeLetter();
+  else if (e.key === 'ArrowRight') nextBtn.click();
+  else if (e.key === 'ArrowLeft') prevBtn.click();
+});
+overlay.addEventListener('click', e => { if (e.target === overlay) closeLetter(); });
+
+function reset() {
+  clearTimeout(cardTimer);
+  t0 = performance.now();
+  detached = false; ready = false; opened = false; cardOpen = false; openProg = 0;
+  overlay.classList.remove('show');
+  hintEl.classList.remove('show');
+  replayBtn.classList.remove('show');
+  captionEl.classList.remove('show');
+  shownCaption = '';
+  character.add(letter);
+  letter.position.copy(LETTER_POS);
+  letter.rotation.copy(LETTER_ROT);
+  letter.scale.set(1, 1, 1);
+  coverHinge.rotation.y = 0;
+  setOpacity(bodyMats, 0);
+  setOpacity(letterMats, 0);
+  character.visible = false;
+  charPoints.visible = true;
+}
+replayBtn.addEventListener('click', reset);
+
+window.addEventListener('resize', layout);
+layout();
+
+// ------------------------------
+// 12. ANIMATION
+// ------------------------------
+const fw = new THREE.Vector3();
+const fwd = new THREE.Vector3();
+const rightV = new THREE.Vector3();
+const tmpQ = new THREE.Quaternion();
+const tmpE = new THREE.Euler();
+const tgtPos = new THREE.Vector3();
+const tgtQuat = new THREE.Quaternion();
+let last = performance.now();
+
+function updateChar(T) {
+  const ang = T * 0.075;
+  const cosA = Math.cos(ang), sinA = Math.sin(ang);
+
+  for (let i = 0; i < N_CHAR; i++) {
+    const i3 = i * 3;
+    const gx = cG[i3], gy = cG[i3 + 1], gz = cG[i3 + 2];
+
+    const x1 = gx * cosA + gz * sinA;
+    const z1 = -gx * sinA + gz * cosA;
+    const y2 = gy * cosT - z1 * sinT;
+    const z2 = gy * sinT + z1 * cosT;
+
+    const wx = CEN.x + x1, wy = CEN.y + y2, wz = CEN.z + z2;
+
+    const p = clamp01((T - TL.morph - cDelay[i]) / TL.dur);
+    const e = easeIO(p);
+    const sw = Math.sin(p * Math.PI);
+
+    charPos[i3]     = wx + (cT[i3]     - wx) * e + cRnd[i3]     * sw;
+    charPos[i3 + 1] = wy + (cT[i3 + 1] - wy) * e + cRnd[i3 + 1] * sw;
+    charPos[i3 + 2] = wz + (cT[i3 + 2] - wz) * e + cRnd[i3 + 2] * sw;
+
+    charCol[i3]     = cGcol[i3]     + (cTcol[i3]     - cGcol[i3])     * e;
+    charCol[i3 + 1] = cGcol[i3 + 1] + (cTcol[i3 + 1] - cGcol[i3 + 1]) * e;
+    charCol[i3 + 2] = cGcol[i3 + 2] + (cTcol[i3 + 2] - cGcol[i3 + 2]) * e;
+  }
+  charPosAttr.needsUpdate = true;
+  charColAttr.needsUpdate = true;
+}
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  const T = (now - t0) / 1000;
+
+  // --- camera (gentle parallax) ---
+  sx += (pointerX - sx) * 0.06;
+  sy += (pointerY - sy) * 0.06;
+  camera.position.set(sx * 1.1, lookY + 0.5 - sy * 0.5, D);
+  camera.lookAt(0, lookY, 0);
+  camera.updateMatrixWorld();
+
+  // --- galaxy ---
+  const fade = smooth(T / TL.fadeIn);
+  const dim = smooth((T - TL.letter0 - 0.2) / 1.2);
+  restMat.opacity = 0.92 * fade * (1 - 0.6 * dim);
+  starMat.opacity = 0.7 * fade;
+  galaxySpin.rotation.y = T * 0.075;
+
+  // --- particles that become the character ---
+  const solid = smooth((T - TL.solid0) / (TL.solid1 - TL.solid0));
+  if (T < TL.solid1 + 0.3) {
+    charPoints.visible = true;
+    charMat.size = charSizeBase * (0.58 + 0.42 * smooth((T - TL.morph) / (TL.spread + TL.dur)));
+    updateChar(T);
+    charMat.opacity = 0.92 * fade * (1 - smooth((T - TL.solid0 - 0.3) / (TL.solid1 - TL.solid0)));
+  } else {
+    charPoints.visible = false;
+  }
+
+  // --- solid character fades in ---
+  character.visible = solid > 0.001;
+  setOpacity(bodyMats, solid * (1 - 0.65 * dim));
+  if (!detached) setOpacity(letterMats, solid);
+
+  // --- neon eyes pulse ---
+  const pulse = 0.78 + 0.22 * Math.sin(T * 2.4);
+  const eyeA = solid * (1 - 0.65 * dim) * pulse;
+  eyeHalos.forEach((sp, i) => { sp.material.opacity = eyeA * (i === 2 ? 0.45 : 1); });
+  eyeGlow.intensity = 15 + 5 * Math.sin(T * 2.4);
+
+  // --- walking (stride tied to distance, knees, ground contact, body lean) ---
+  const wprog = clamp01((T - TL.walk0) / (TL.walk1 - TL.walk0));
+  const we = easeIO(wprog);
+  const z = zEnd * we;
+  const vel = (wprog <= 0 || wprog >= 1) ? 0
+    : (wprog < 0.5 ? 12 * wprog * wprog : 12 * (1 - wprog) * (1 - wprog)) / 3;   // 0..1
+  const amp = smooth(vel * 2.2);
+  const phase = we * 2.28 * Math.min(zEnd, 7);
+  const idle = smooth(T - TL.solid1);
+
+  const swing = 0.5 * amp;
+  const hipL = Math.sin(phase) * swing, hipR = -hipL;
+  const flexL = Math.max(0, -Math.cos(phase)) * 0.8 * amp;   // swinging leg bends its knee
+  const flexR = Math.max(0, Math.cos(phase)) * 0.8 * amp;
+  legL.rotation.x = hipL; legR.rotation.x = hipR;
+  legL.userData.knee.rotation.x = flexL;
+  legR.userData.knee.rotation.x = flexR;
+
+  // lower the body so the stance foot always touches the ground
+  const footY = (h, k) => 1.45 - 0.72 * Math.cos(h) - 0.72 * Math.cos(h + k);
+  const bodyY = -Math.min(footY(hipL, flexL), footY(hipR, flexR)) + 0.01;
+  const lean = 0.07 * amp;
+  const floatY = Math.sin(T * 1.1) * 0.06 * idle * (1 - amp);
+
+  character.position.set(BASE.x, bodyY + floatY, z);
+  character.rotation.y = (Math.sin(T * 0.35) * 0.06 - sx * 0.14) * idle + Math.sin(phase) * 0.07 * amp;
+  character.rotation.x = sy * 0.06 * idle + lean;
+  character.rotation.z = Math.sin(phase) * 0.03 * amp;
+  // head counter-balances the body so it stays calm
+  head.rotation.set(
+    0.06 - lean * 0.9 + Math.sin(phase * 2 + 1) * 0.025 * amp,
+    -0.25 - Math.sin(phase) * 0.06 * amp + Math.sin(T * 0.6) * 0.05 * idle,
+    0.09 - Math.sin(phase) * 0.03 * amp
+  );
+  lightRig.position.z = z;
+
+  // --- neon particles orbiting the character ---
+  const orbIn = smooth((T - TL.solid0 + 0.4) / 2.2);
+  orbMat.opacity = orbIn * (1 - 0.5 * dim);
+  orbPoints.position.set(BASE.x, 0, z);
+  const rs = 0.55 + 0.45 * orbIn;
+  for (let i = 0; i < N_ORB; i++) {
+    const d = orbData[i];
+    const ang = d.a + T * d.w;
+    const h = (((d.h0 + T * d.vy) % 5.4) + 5.4) % 5.4 - 2.7;
+    const ox = Math.cos(ang) * d.r * rs;
+    orbPos[i * 3]     = ox;
+    orbPos[i * 3 + 1] = 2.45 + h + d.tilt * ox;
+    orbPos[i * 3 + 2] = Math.sin(ang) * d.r * rs * 0.85;
+    const f = Math.pow(1 - Math.abs(h) / 2.7, 0.7) * (0.55 + 0.45 * Math.sin(T * 3 + d.s));
+    orbCol[i * 3] = d.c.r * f; orbCol[i * 3 + 1] = d.c.g * f; orbCol[i * 3 + 2] = d.c.b * f;
+  }
+  orbPosAttr.needsUpdate = true;
+  orbColAttr.needsUpdate = true;
+
+  // --- flower sway + sparkles ---
+  flower.rotation.z = -0.12 + Math.sin(T * 1.5) * 0.025 * idle + Math.sin(phase * 2) * 0.05 * amp;
+  if (!detached) letter.rotation.z = LETTER_ROT.z + Math.sin(phase * 2 + 0.5) * 0.03 * amp;
+  flower.scale.setScalar(1 + Math.sin(T * 2) * 0.018 * idle);
+  character.updateMatrixWorld(true);
+  flower.getWorldPosition(fw);
+  sparkles.forEach(s => {
+    const d = s.userData;
+    const a = d.a + T * d.speed;
+    s.visible = idle > 0.01;
+    s.position.set(
+      fw.x + Math.cos(a) * d.r,
+      fw.y + d.y + Math.sin(a) * 0.18,
+      fw.z + 0.3 + Math.sin(a) * 0.3
+    );
+    s.material.opacity = idle * (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(T * 3 + d.a))) * (1 - 0.5 * dim);
+  });
+
+  // --- the book opens (cover swings around the spine) ---
+  openProg = clamp01(openProg + (opened ? 1 : 0) * dt * 1.3);
+  const eo = easeIO(openProg);
+  coverHinge.rotation.y = -Math.PI * 0.86 * eo;
+
+  // --- the book flies to the front of the screen ---
+  const visH = 2 * TANH * 6;
+  const visW = visH * camera.aspect;
+  const Lscale = Math.min(0.78 * visW / LW, 0.5 * visH / LH);
+
+  if (T >= TL.letter0) {
+    if (!detached) {
+      letter.getWorldPosition(letterStartPos);
+      letter.getWorldQuaternion(letterStartQuat);
+      scene.attach(letter);
+      letter.scale.set(1, 1, 1);
+      detached = true;
+    }
+    camera.getWorldDirection(fwd);
+    tgtPos.copy(camera.position).addScaledVector(fwd, 6);
+
+    // when open, shrink a little and slide right so both halves stay on screen
+    const sc = Lscale * (1 - 0.4 * eo);
+    rightV.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    tgtPos.addScaledVector(rightV, 0.445 * LW * sc * eo);
+
+    const u = easeIO((T - TL.letter0) / (TL.letter1 - TL.letter0));
+    const hover = smooth((T - TL.letter1) / 0.6);
+    tmpE.set(0, 0, Math.sin(T * 1.3) * 0.03 * hover);
+    tmpQ.setFromEuler(tmpE);
+    tgtQuat.copy(camera.quaternion).multiply(tmpQ);
+
+    letter.position.lerpVectors(letterStartPos, tgtPos, u);
+    letter.position.y += Math.sin(u * Math.PI) * 1.2 + Math.sin(T * 1.6) * 0.04 * hover * Lscale;
+    letter.quaternion.slerpQuaternions(letterStartQuat, tgtQuat, u);
+    letter.scale.setScalar(1 + (sc - 1) * u);
+    setOpacity(letterMats, 1);
+  }
+
+  // --- captions & hints ---
+  const cap = TEXTS.captions.find(c => T >= c.from && T < c.to);
+  const capText = cap ? cap.text : '';
+  if (capText !== shownCaption) {
+    shownCaption = capText;
+    if (capText) captionEl.textContent = capText;
+    captionEl.classList.toggle('show', !!capText);
+  }
+
+  if (!ready && T >= TL.letter1 + 0.2) {
+    ready = true;
+    hintEl.textContent = TEXTS.hintFirst;
+    hintEl.classList.add('show');
+    replayBtn.classList.add('show');
+  }
+  canvas.style.cursor = ready && !cardOpen ? 'pointer' : 'default';
+
+  renderer.render(scene, camera);
+}
+
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
